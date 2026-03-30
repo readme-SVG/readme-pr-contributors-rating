@@ -17,6 +17,7 @@ window.__I18N['kk'] = {
   titleColorLabel: 'Тақырып',
   mutedColorLabel: 'Қосымша мәтін',
   starColorLabel: 'Жұлдыз түсі',
+  shadowColorLabel: 'Shadow color',
   borderColorLabel: 'Шекара түсі',
   generateBtn: 'Бейдж жасау',
   previewPlaceholder: 'Алдын ала көру үшін "Бейдж жасау" түймесін басыңыз',

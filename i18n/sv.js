@@ -17,6 +17,7 @@ window.__I18N['sv'] = {
   titleColorLabel: 'Titel',
   mutedColorLabel: 'Dämpad text',
   starColorLabel: 'Stjärnfärg',
+  shadowColorLabel: 'Shadow color',
   borderColorLabel: 'Kantfärg',
   generateBtn: 'Generera badge',
   previewPlaceholder: 'Klicka på "Generera badge" för att förhandsvisa',

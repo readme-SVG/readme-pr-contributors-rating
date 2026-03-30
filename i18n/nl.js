@@ -17,6 +17,7 @@ window.__I18N['nl'] = {
   titleColorLabel: 'Titel',
   mutedColorLabel: 'Secundaire tekst',
   starColorLabel: 'Sterkleur',
+  shadowColorLabel: 'Shadow color',
   borderColorLabel: 'Randkleur',
   generateBtn: 'Badge genereren',
   previewPlaceholder: 'Klik op "Badge genereren" om te bekijken',

@@ -17,6 +17,7 @@ window.__I18N['es'] = {
   titleColorLabel: 'Título',
   mutedColorLabel: 'Texto secundario',
   starColorLabel: 'Color de estrella',
+  shadowColorLabel: 'Shadow color',
   borderColorLabel: 'Color del borde',
   generateBtn: 'Generar insignia',
   previewPlaceholder: 'Haz clic en "Generar insignia" para previsualizar',

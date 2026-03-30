@@ -17,6 +17,7 @@ window.__I18N['de'] = {
   titleColorLabel: 'Titel',
   mutedColorLabel: 'Sekundärtext',
   starColorLabel: 'Sternfarbe',
+  shadowColorLabel: 'Shadow color',
   borderColorLabel: 'Randfarbe',
   generateBtn: 'Badge erzeugen',
   previewPlaceholder: 'Klicke auf "Badge erzeugen", um die Vorschau zu sehen',

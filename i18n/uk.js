@@ -17,6 +17,7 @@ window.__I18N['uk'] = {
   titleColorLabel: 'Заголовок',
   mutedColorLabel: 'Другорядний текст',
   starColorLabel: 'Колір зірки',
+  shadowColorLabel: 'Shadow color',
   borderColorLabel: 'Колір рамки',
   generateBtn: 'Згенерувати',
   previewPlaceholder: 'Натисніть "Згенерувати", щоб переглянути',

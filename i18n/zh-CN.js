@@ -17,6 +17,7 @@ window.__I18N['zh-CN'] = {
   titleColorLabel: '标题',
   mutedColorLabel: '次要文本',
   starColorLabel: '星标颜色',
+  shadowColorLabel: 'Shadow color',
   borderColorLabel: '边框颜色',
   generateBtn: '生成徽章',
   previewPlaceholder: '点击“生成徽章”进行预览',

@@ -13,6 +13,8 @@ export default async function handler(req, res) {
     const mutedColor = sanitizeHex(req.query.muted_color, '8b949e');
     const starColor = sanitizeHex(req.query.star_color, 'e3b341');
     const borderColor = sanitizeHex(req.query.border_color, '30363d');
+    const shadowColor = sanitizeHex(req.query.shadow_color, '000000');
+    const transparent = req.query.transparent === 'true';
 
     const token = process.env.GITHUB_TOKEN;
     const headers = token
@@ -78,7 +80,9 @@ export default async function handler(req, res) {
             titleColor,
             mutedColor,
             starColor,
-            borderColor
+            borderColor,
+            shadowColor,
+            transparent
         });
 
         res.setHeader('Content-Type', 'image/svg+xml');
@@ -154,7 +158,9 @@ function buildSvg(prs, username, opts) {
         titleColor,
         mutedColor,
         starColor,
-        borderColor
+        borderColor,
+        shadowColor,
+        transparent
     } = opts;
 
     const font = 'Segoe UI, Helvetica, Arial, sans-serif';
@@ -180,17 +186,19 @@ function buildSvg(prs, username, opts) {
         ? (showRepo ? (showDate ? 38 : 50) : (showDate ? 50 : 65))
         : 0;
 
+    const textShadowStyle = transparent ? `filter="url(#textShadow)"` : '';
+
     let headerHtml = '';
     if (showRepo) {
-        headerHtml += `<text x="${repoX}" y="75" font-family="${font}" font-size="12" font-weight="bold" fill="#${mutedColor}">REPOSITORY</text>`;
+        headerHtml += `<text x="${repoX}" y="75" font-family="${font}" font-size="12" font-weight="bold" fill="#${mutedColor}" ${textShadowStyle}>REPOSITORY</text>`;
     }
     if (showPr) {
-        headerHtml += `<text x="${prX}" y="75" font-family="${font}" font-size="12" font-weight="bold" fill="#${mutedColor}">PULL REQUEST</text>`;
+        headerHtml += `<text x="${prX}" y="75" font-family="${font}" font-size="12" font-weight="bold" fill="#${mutedColor}" ${textShadowStyle}>PULL REQUEST</text>`;
     }
     if (showDate) {
-        headerHtml += `<text x="${dateX}" y="75" font-family="${font}" font-size="12" font-weight="bold" fill="#${mutedColor}">DATE</text>`;
+        headerHtml += `<text x="${dateX}" y="75" font-family="${font}" font-size="12" font-weight="bold" fill="#${mutedColor}" ${textShadowStyle}>DATE</text>`;
     }
-    headerHtml += `<text x="${starX}" y="75" font-family="${font}" font-size="12" font-weight="bold" fill="#${mutedColor}">STARS</text>`;
+    headerHtml += `<text x="${starX}" y="75" font-family="${font}" font-size="12" font-weight="bold" fill="#${mutedColor}" ${textShadowStyle}>STARS</text>`;
 
     let rowsHtml = '';
     prs.forEach((pr, index) => {
@@ -206,27 +214,38 @@ function buildSvg(prs, username, opts) {
         rowsHtml += `<svg x="${iconX}" y="-12" width="16" height="16" viewBox="0 0 16 16" fill="${icon.color}"><path fill-rule="evenodd" d="${icon.path}"></path></svg>`;
 
         if (showRepo) {
-            rowsHtml += `<text x="${repoX}" y="0" font-family="${font}" font-size="14" font-weight="600" fill="#${textColor}">${repoText}</text>`;
+            rowsHtml += `<text x="${repoX}" y="0" font-family="${font}" font-size="14" font-weight="600" fill="#${textColor}" ${textShadowStyle}>${repoText}</text>`;
         }
         if (showPr) {
-            rowsHtml += `<text x="${prX}" y="0" font-family="${font}" font-size="14" fill="#${mutedColor}">${title}</text>`;
+            rowsHtml += `<text x="${prX}" y="0" font-family="${font}" font-size="14" fill="#${mutedColor}" ${textShadowStyle}>${title}</text>`;
         }
         if (showDate) {
-            rowsHtml += `<text x="${dateX}" y="0" font-family="${font}" font-size="13" fill="#${mutedColor}">${date}</text>`;
+            rowsHtml += `<text x="${dateX}" y="0" font-family="${font}" font-size="13" fill="#${mutedColor}" ${textShadowStyle}>${date}</text>`;
         }
 
         rowsHtml += `<svg x="${starX}" y="-12" width="16" height="16" viewBox="0 0 16 16" fill="#${starColor}"><path fill-rule="evenodd" d="M8 .25a.75.75 0 01.673.418l1.882 3.815 4.21.612a.75.75 0 01.416 1.279l-3.046 2.97.719 4.192a.75.75 0 01-1.088.791L8 12.347l-3.766 1.98a.75.75 0 01-1.088-.79l.72-4.194L.818 6.374a.75.75 0 01.416-1.28l4.21-.611L7.327.668A.75.75 0 018 .25z"></path></svg>`;
-        rowsHtml += `<text x="${starX + 20}" y="0" font-family="${font}" font-size="13" font-weight="bold" fill="#${starColor}">${starsText}</text>`;
+        rowsHtml += `<text x="${starX + 20}" y="0" font-family="${font}" font-size="13" font-weight="bold" fill="#${starColor}" ${textShadowStyle}>${starsText}</text>`;
         rowsHtml += `</g>`;
     });
 
     const svgHeight = 130 + prs.length * rowHeight;
 
+    const backgroundRect = transparent
+        ? ''
+        : `<rect width="${badgeWidth - 2}" height="${svgHeight - 2}" x="1" y="1" rx="8" fill="#${bgColor}" stroke="#${borderColor}" stroke-width="1"/>`;
+    const headerLine = transparent
+        ? ''
+        : `<line x1="20" y1="85" x2="${badgeWidth - 20}" y2="85" stroke="#${borderColor}" stroke-width="1"/>`;
+    const shadowDefs = transparent
+        ? `<defs><filter id="textShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="0" stdDeviation="1" flood-color="#${shadowColor}" flood-opacity="1"/></filter></defs>`
+        : '';
+
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${badgeWidth}" height="${svgHeight}" viewBox="0 0 ${badgeWidth} ${svgHeight}">
-  <rect width="${badgeWidth - 2}" height="${svgHeight - 2}" x="1" y="1" rx="8" fill="#${bgColor}" stroke="#${borderColor}" stroke-width="1"/>
-  <text x="20" y="35" font-family="${font}" font-size="18" font-weight="bold" fill="#${titleColor}">Top Contributions by ${safeUser}</text>
+  ${shadowDefs}
+  ${backgroundRect}
+  <text x="20" y="35" font-family="${font}" font-size="18" font-weight="bold" fill="#${titleColor}" ${textShadowStyle}>Top Contributions by ${safeUser}</text>
   ${headerHtml}
-  <line x1="20" y1="85" x2="${badgeWidth - 20}" y2="85" stroke="#${borderColor}" stroke-width="1"/>
+  ${headerLine}
   ${rowsHtml}
 </svg>`;
 }
