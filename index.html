@@ -299,6 +299,7 @@
                         <option value="light">GitHub Light</option>
                         <option value="dimmed">GitHub Dimmed</option>
                         <option value="night">Night Blue</option>
+                        <option value="transparent">Transparent</option>
                         <option value="custom">Custom</option>
                     </select>
                 </div>
@@ -391,6 +392,14 @@
             </div>
 
             <div class="form-group">
+                <label class="form-label" data-i18n="shadowColorLabel">Shadow color</label>
+                <div class="color-group">
+                    <input type="color" class="color-input" id="shadowColorPicker" value="#000000">
+                    <input type="text" class="color-hex" id="shadowColor" value="000000" maxlength="6">
+                </div>
+            </div>
+
+            <div class="form-group">
                 <button class="btn-primary" id="generateBtn" onclick="generate()">
                     <span data-i18n="generateBtn">Generate Badge</span>
                 </button>
@@ -445,7 +454,8 @@ const themePresets = {
     dark: { bg: '0d1117', text: 'c9d1d9', title: '58a6ff', muted: '8b949e', star: 'e3b341', border: '30363d' },
     light: { bg: 'ffffff', text: '24292f', title: '0969da', muted: '57606a', star: 'bf8700', border: 'd0d7de' },
     dimmed: { bg: '22272e', text: 'adbac7', title: '539bf5', muted: '768390', star: 'd29922', border: '444c56' },
-    night: { bg: '0b1320', text: 'd8e5ff', title: '4ea1ff', muted: '89a4d6', star: 'ffd166', border: '1d3557' }
+    night: { bg: '0b1320', text: 'd8e5ff', title: '4ea1ff', muted: '89a4d6', star: 'ffd166', border: '1d3557', shadow: '000000' },
+    transparent: { bg: '000000', text: 'ffffff', title: 'ffffff', muted: 'd1d5db', star: 'ffd166', border: '000000', shadow: '000000', transparent: true }
 };
 
 let currentLang = 'en';
@@ -488,9 +498,10 @@ function applyThemePreset(name) {
     setColor('muted', t.muted);
     setColor('star', t.star);
     setColor('border', t.border);
+    setColor('shadow', t.shadow || '000000');
 }
 
-['bg', 'text', 'title', 'muted', 'star', 'border'].forEach((name) => setupColorSync(`${name}ColorPicker`, `${name}Color`));
+['bg', 'text', 'title', 'muted', 'star', 'border', 'shadow'].forEach((name) => setupColorSync(`${name}ColorPicker`, `${name}Color`));
 applyThemePreset('dark');
 
 function updatePreviewWindowSize() {
@@ -515,6 +526,7 @@ function buildBadgeUrl() {
     const mutedColor = document.getElementById('mutedColor').value;
     const starColor = document.getElementById('starColor').value;
     const borderColor = document.getElementById('borderColor').value;
+    const shadowColor = document.getElementById('shadowColor').value;
 
     const params = new URLSearchParams();
     params.set('username', username);
@@ -530,6 +542,8 @@ function buildBadgeUrl() {
     if (mutedColor !== themePresets.dark.muted) params.set('muted_color', mutedColor);
     if (starColor !== themePresets.dark.star) params.set('star_color', starColor);
     if (borderColor !== themePresets.dark.border) params.set('border_color', borderColor);
+    if (shadowColor !== '000000') params.set('shadow_color', shadowColor);
+    if (document.getElementById('themePreset').value === 'transparent') params.set('transparent', 'true');
 
     return { url: `${window.location.origin}/api/badge?${params.toString()}` };
 }

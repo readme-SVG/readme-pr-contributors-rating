@@ -17,6 +17,7 @@ window.__I18N['ja'] = {
   titleColorLabel: 'タイトル',
   mutedColorLabel: '補助テキスト',
   starColorLabel: 'スター色',
+  shadowColorLabel: 'Shadow color',
   borderColorLabel: '枠線色',
   generateBtn: 'バッジを生成',
   previewPlaceholder: '「バッジを生成」をクリックしてプレビュー',

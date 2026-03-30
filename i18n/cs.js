@@ -17,6 +17,7 @@ window.__I18N['cs'] = {
   titleColorLabel: 'Nadpis',
   mutedColorLabel: 'Sekundární text',
   starColorLabel: 'Barva hvězdy',
+  shadowColorLabel: 'Shadow color',
   borderColorLabel: 'Barva okraje',
   generateBtn: 'Vygenerovat badge',
   previewPlaceholder: 'Klikněte na "Vygenerovat badge" pro náhled',

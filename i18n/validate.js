@@ -18,6 +18,7 @@ window.__I18N_REQUIRED_KEYS = [
   'mutedColorLabel',
   'starColorLabel',
   'borderColorLabel',
+  'shadowColorLabel',
   'generateBtn',
   'previewPlaceholder',
   'markdownLabel',

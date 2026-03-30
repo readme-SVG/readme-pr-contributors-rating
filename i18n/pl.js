@@ -17,6 +17,7 @@ window.__I18N['pl'] = {
   titleColorLabel: 'Tytuł',
   mutedColorLabel: 'Tekst pomocniczy',
   starColorLabel: 'Kolor gwiazdki',
+  shadowColorLabel: 'Shadow color',
   borderColorLabel: 'Kolor obramowania',
   generateBtn: 'Generuj badge',
   previewPlaceholder: 'Kliknij "Generuj badge", aby zobaczyć podgląd',

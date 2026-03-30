@@ -17,6 +17,7 @@ window.__I18N['ru'] = {
   titleColorLabel: 'Заголовок',
   mutedColorLabel: 'Вторичный текст',
   starColorLabel: 'Цвет звезды',
+  shadowColorLabel: 'Shadow color',
   borderColorLabel: 'Цвет рамки',
   generateBtn: 'Сгенерировать',
   previewPlaceholder: 'Нажмите "Сгенерировать" для предпросмотра',
