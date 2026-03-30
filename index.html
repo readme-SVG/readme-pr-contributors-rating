@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Top Contributions Generator</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; 
+            background-color: #0d1117; 
+            color: #c9d1d9; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh; 
+            margin: 0; 
+            padding: 20px; 
+        }
+        .container { 
+            background: #161b22; 
+            padding: 30px; 
+            border-radius: 8px; 
+            border: 1px solid #30363d; 
+            text-align: center; 
+            max-width: 950px; 
+            width: 100%; 
+            box-sizing: border-box; 
+        }
+        input { 
+            padding: 8px 12px; 
+            background: #0d1117; 
+            border: 1px solid #30363d; 
+            color: #c9d1d9; 
+            border-radius: 6px; 
+            margin-right: 10px; 
+            width: 250px; 
+        }
+        button { 
+            padding: 8px 16px; 
+            background: #238636; 
+            color: #fff; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-weight: bold; 
+        }
+        button:hover { 
+            background: #2ea043; 
+        }
+        .preview { 
+            margin-top: 30px; 
+            overflow-x: auto; 
+            background: #0d1117; 
+            padding: 20px; 
+            border-radius: 8px; 
+            border: 1px solid #30363d;
+        }
+        code { 
+            display: block; 
+            margin-top: 15px; 
+            background: #0d1117; 
+            padding: 10px; 
+            border-radius: 6px; 
+            border: 1px solid #30363d; 
+            user-select: all; 
+            word-break: break-all; 
+        }
+        .warning { 
+            color: #d29922; 
+            font-size: 14px; 
+            margin-top: 15px; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Топ контрибьюшенов по звездам</h2>
+        <div>
+            <input type="text" id="username" placeholder="GitHub Username" value="OstinUA">
+            <button onclick="generate()">Сгенерировать</button>
+        </div>
+        <p class="warning">Для стабильной работы добавьте GITHUB_TOKEN в переменные окружения Vercel.</p>
+        <div class="preview">
+            <img id="badge" src="/api/badge?username=OstinUA" alt="Top PR Stats" style="max-width: 100%;">
+        </div>
+        <div>
+            <p>Markdown код для README.md:</p>
+            <code id="markdown">[![Top PRs](https://твой-домен.vercel.app/api/badge?username=OstinUA)](https://github.com/pulls?q=is:pr+author:OstinUA)</code>
+        </div>
+    </div>
+
+    <script>
+        function generate() {
+            const username = document.getElementById('username').value || 'OstinUA';
+            const domain = window.location.origin;
+            const badgeUrl = `${domain}/api/badge?username=${username}`;
+            const targetUrl = `https://github.com/pulls?q=is:pr+author:${username}`;
+            
+            document.getElementById('badge').src = badgeUrl;
+            document.getElementById('markdown').innerText = `[![Top PRs](${badgeUrl})](${targetUrl})`;
+        }
+    </script>
+</body>
+</html>
