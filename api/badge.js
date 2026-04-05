@@ -4,12 +4,20 @@ export default async function handler(req, res) {
     const showPr = req.query.show_pr !== 'false';
     const showDate = req.query.show_date !== 'false';
     const showRepo = req.query.show_repo !== 'false';
-    const badgeWidth = clamp(parseInt(req.query.badge_width, 10) || 830, 700, 1400);
-    const rowHeight = clamp(parseInt(req.query.row_height, 10) || 40, 30, 60);
-
-    const customTitle = req.query.custom_title ? sanitizeText(req.query.custom_title, 80) : '';
     const showLang = req.query.show_lang === 'true';
     const showChanges = req.query.show_changes === 'true';
+    const showStars = req.query.show_stars !== 'false';
+
+    const badgeWidth = clamp(parseInt(req.query.badge_width, 10) || 830, 700, 1400);
+    const rowHeight = clamp(parseInt(req.query.row_height, 10) || 40, 30, 60);
+    const repoWidth = clamp(parseInt(req.query.repo_width, 10) || 180, 60, 500);
+    const langWidth = clamp(parseInt(req.query.lang_width, 10) || 80, 60, 300);
+    const prWidth = clamp(parseInt(req.query.pr_width, 10) || 320, 100, 900);
+    const dateWidth = clamp(parseInt(req.query.date_width, 10) || 90, 60, 300);
+    const changesWidth = clamp(parseInt(req.query.changes_width, 10) || 100, 70, 300);
+    const starsWidth = clamp(parseInt(req.query.stars_width, 10) || 60, 50, 240);
+
+    const customTitle = req.query.custom_title ? sanitizeText(req.query.custom_title, 80) : '';
 
     const bgColor = sanitizeHex(req.query.bg_color, '0d1117');
     const textColor = sanitizeHex(req.query.text_color, 'c9d1d9');
@@ -116,8 +124,16 @@ export default async function handler(req, res) {
             showDate,
             showRepo,
             showLang,
+            showChanges,
+            showStars,
             badgeWidth,
             rowHeight,
+            repoWidth,
+            langWidth,
+            prWidth,
+            dateWidth,
+            changesWidth,
+            starsWidth,
             bgColor,
             textColor,
             titleColor,
@@ -126,8 +142,7 @@ export default async function handler(req, res) {
             borderColor,
             shadowColor,
             transparent,
-            customTitle,
-            showChanges
+            customTitle
         });
 
         res.setHeader('Content-Type', 'image/svg+xml');
@@ -202,6 +217,11 @@ function truncate(str, length) {
     return safe.length > length ? safe.substring(0, length - 3) + '...' : safe;
 }
 
+function truncateToWidth(str, widthPx, pxPerChar = 7.2, minLen = 4) {
+    const maxLen = Math.max(minLen, Math.floor(widthPx / pxPerChar));
+    return truncate(str, maxLen);
+}
+
 function formatStars(stars) {
     return stars >= 1000 ? (stars / 1000).toFixed(1) + 'k' : String(stars);
 }
@@ -232,8 +252,15 @@ function buildSvg(prs, username, opts) {
         showRepo,
         showLang,
         showChanges,
+        showStars,
         badgeWidth,
         rowHeight,
+        repoWidth,
+        langWidth,
+        prWidth,
+        dateWidth,
+        changesWidth,
+        starsWidth,
         bgColor,
         textColor,
         titleColor,
@@ -250,72 +277,39 @@ function buildSvg(prs, username, opts) {
     const headerText = customTitle ? escapeXml(customTitle) : `Top Contributions by ${safeUser}`;
     const innerLeft = 20;
     const innerRight = badgeWidth - 20;
-    const colGap = 24;
-    const langDotOffset = showLang ? 16 : 0;
-
-    const iconX = innerLeft;
-    const prPaddingLeft = 24;
-    const minStarsX = innerLeft + 280;
-    const starsBlockWidth = 84;
-    const dateColWidth = 95;
-    const changesColWidth = 100;
-    const repoColWidth = showRepo ? (showLang ? 210 : 190) : 0;
-
-    const trailingColumnsWidth = starsBlockWidth
-        + (showDate ? (colGap + dateColWidth) : 0)
-        + (showChanges ? (colGap + changesColWidth) : 0);
-
-    const availableRightEdge = innerRight - trailingColumnsWidth;
-    const minPrX = iconX + prPaddingLeft;
-
-    let repoX = -1;
-    let prX = -1;
-
-    if (showRepo) {
-        repoX = minPrX;
-        prX = repoX + repoColWidth + colGap;
-    } else {
-        prX = minPrX;
-    }
-
-    const availablePrWidth = Math.max(120, availableRightEdge - prX);
-    const titleMaxLen = showPr ? Math.max(12, Math.floor((availablePrWidth - 8) / 7.2)) : 0;
-
-    const starsIconX = Math.max(prX + availablePrWidth + colGap, minStarsX);
-    const starsHeaderX = starsIconX;
-
-    let dateX = -1;
-    let changesX = -1;
-    let trailingX = starsIconX - colGap;
-
-    if (showDate) {
-        trailingX -= dateColWidth;
-        dateX = trailingX;
-        trailingX -= colGap;
-    }
-
-    if (showChanges) {
-        trailingX -= changesColWidth;
-        changesX = trailingX;
-        trailingX -= colGap;
-    }
-
+    const colGap = 16;
     const textShadowStyle = transparent ? `filter="url(#textShadow)"` : '';
 
+    const columns = [];
+    if (showRepo) columns.push({ key: 'repo', label: 'REPOSITORY', width: repoWidth });
+    if (showLang) columns.push({ key: 'lang', label: 'LANGUAGE', width: langWidth });
+    if (showPr) columns.push({ key: 'pr', label: 'PULL REQUEST', width: prWidth });
+    if (showDate) columns.push({ key: 'date', label: 'DATE', width: dateWidth });
+    if (showChanges) columns.push({ key: 'changes', label: 'CHANGES', width: changesWidth });
+    if (showStars) columns.push({ key: 'stars', label: 'STARS', width: starsWidth });
+
+    const iconX = innerLeft;
+    let currentX = iconX + 24;
+    const columnMap = {};
+
+    for (const col of columns) {
+        const remaining = innerRight - currentX;
+        if (remaining <= 12) break;
+        const allocated = Math.max(12, Math.min(col.width, remaining));
+        columnMap[col.key] = {
+            x: currentX,
+            width: allocated,
+            label: col.label
+        };
+        currentX += allocated + colGap;
+    }
+
     let headerHtml = '';
-    if (showRepo) {
-        headerHtml += `<text x="${repoX}" y="75" font-family="${font}" font-size="12" font-weight="bold" fill="#${mutedColor}" ${textShadowStyle}>REPOSITORY</text>`;
+    for (const col of columns) {
+        const cfg = columnMap[col.key];
+        if (!cfg) continue;
+        headerHtml += `<text x="${cfg.x}" y="75" font-family="${font}" font-size="12" font-weight="bold" fill="#${mutedColor}" ${textShadowStyle}>${cfg.label}</text>`;
     }
-    if (showPr) {
-        headerHtml += `<text x="${prX}" y="75" font-family="${font}" font-size="12" font-weight="bold" fill="#${mutedColor}" ${textShadowStyle}>PULL REQUEST</text>`;
-    }
-    if (showDate) {
-        headerHtml += `<text x="${dateX}" y="75" font-family="${font}" font-size="12" font-weight="bold" fill="#${mutedColor}" ${textShadowStyle}>DATE</text>`;
-    }
-    if (showChanges) {
-        headerHtml += `<text x="${changesX}" y="75" font-family="${font}" font-size="12" font-weight="bold" fill="#${mutedColor}" ${textShadowStyle}>CHANGES</text>`;
-    }
-    headerHtml += `<text x="${starsHeaderX}" y="75" font-family="${font}" font-size="12" font-weight="bold" fill="#${mutedColor}" ${textShadowStyle}>STARS</text>`;
 
     let rowsHtml = '';
     prs.forEach((pr, index) => {
@@ -323,37 +317,58 @@ function buildSvg(prs, username, opts) {
         const icon = getStatusIcon(pr);
         const repoName = pr.repository_url.split('/').slice(-2).join('/');
         const date = new Date(pr.created_at).toISOString().split('T')[0];
-        const title = truncate(pr.title, titleMaxLen);
-        const repoText = truncate(repoName, 24);
         const starsText = formatStars(pr.repoStars);
+        const langText = pr.repoLanguage || 'Unknown';
 
         rowsHtml += `<g transform="translate(0, ${yOffset})">`;
         rowsHtml += `<svg x="${iconX}" y="-12" width="16" height="16" viewBox="0 0 16 16" fill="${icon.color}"><path fill-rule="evenodd" d="${icon.path}"></path></svg>`;
 
-        if (showRepo) {
-            if (showLang && pr.repoLanguage) {
-                const langColor = LANG_COLORS[pr.repoLanguage] || '#8b949e';
-                rowsHtml += `<circle cx="${repoX + 5}" cy="-4" r="5" fill="${langColor}"/>`;
-                rowsHtml += `<text x="${repoX + langDotOffset}" y="0" font-family="${font}" font-size="14" font-weight="600" fill="#${textColor}" ${textShadowStyle}>${repoText}</text>`;
-            } else {
-                rowsHtml += `<text x="${repoX}" y="0" font-family="${font}" font-size="14" font-weight="600" fill="#${textColor}" ${textShadowStyle}>${repoText}</text>`;
-            }
-        }
-        if (showPr) {
-            rowsHtml += `<text x="${prX}" y="0" font-family="${font}" font-size="14" fill="#${mutedColor}" ${textShadowStyle}>${title}</text>`;
-        }
-        if (showDate) {
-            rowsHtml += `<text x="${dateX}" y="0" font-family="${font}" font-size="13" fill="#${mutedColor}" ${textShadowStyle}>${date}</text>`;
-        }
-        if (showChanges) {
-            const additions = pr.additions || 0;
-            const deletions = pr.deletions || 0;
-            rowsHtml += `<text x="${changesX}" y="0" font-family="${font}" font-size="13" fill="#3fb950" ${textShadowStyle}>+${additions}</text>`;
-            rowsHtml += `<text x="${changesX + 50}" y="0" font-family="${font}" font-size="13" fill="#f85149" ${textShadowStyle}>-${deletions}</text>`;
+        const repoCol = columnMap.repo;
+        if (repoCol) {
+            const repoText = truncateToWidth(repoName, repoCol.width - 6, 7.2, 6);
+            rowsHtml += `<text x="${repoCol.x}" y="0" font-family="${font}" font-size="14" font-weight="600" fill="#${textColor}" ${textShadowStyle}>${repoText}</text>`;
         }
 
-        rowsHtml += `<svg x="${starsIconX}" y="-12" width="16" height="16" viewBox="0 0 16 16" fill="#${starColor}"><path fill-rule="evenodd" d="M8 .25a.75.75 0 01.673.418l1.882 3.815 4.21.612a.75.75 0 01.416 1.279l-3.046 2.97.719 4.192a.75.75 0 01-1.088.791L8 12.347l-3.766 1.98a.75.75 0 01-1.088-.79l.72-4.194L.818 6.374a.75.75 0 01.416-1.28l4.21-.611L7.327.668A.75.75 0 018 .25z"></path></svg>`;
-        rowsHtml += `<text x="${starsIconX + 20}" y="0" font-family="${font}" font-size="13" font-weight="bold" fill="#${starColor}" ${textShadowStyle}>${starsText}</text>`;
+        const langCol = columnMap.lang;
+        if (langCol) {
+            const langColor = LANG_COLORS[pr.repoLanguage] || '#8b949e';
+            const langTextX = langCol.x + 14;
+            const langMaxTextWidth = Math.max(12, langCol.width - 16);
+            const langDisplay = truncateToWidth(langText, langMaxTextWidth, 7, 4);
+            rowsHtml += `<circle cx="${langCol.x + 5}" cy="-4" r="5" fill="${langColor}"/>`;
+            rowsHtml += `<text x="${langTextX}" y="0" font-family="${font}" font-size="13" fill="#${textColor}" ${textShadowStyle}>${langDisplay}</text>`;
+        }
+
+        const prCol = columnMap.pr;
+        if (prCol) {
+            const prTitle = truncateToWidth(pr.title, prCol.width - 6, 7.2, 8);
+            rowsHtml += `<text x="${prCol.x}" y="0" font-family="${font}" font-size="14" fill="#${mutedColor}" ${textShadowStyle}>${prTitle}</text>`;
+        }
+
+        const dateCol = columnMap.date;
+        if (dateCol) {
+            const dateText = truncateToWidth(date, dateCol.width - 6, 7, 8);
+            rowsHtml += `<text x="${dateCol.x}" y="0" font-family="${font}" font-size="13" fill="#${mutedColor}" ${textShadowStyle}>${dateText}</text>`;
+        }
+
+        const changesCol = columnMap.changes;
+        if (changesCol) {
+            const additions = pr.additions || 0;
+            const deletions = pr.deletions || 0;
+            const pairText = `+${additions} / -${deletions}`;
+            const changesText = truncateToWidth(pairText, changesCol.width - 6, 7, 7);
+            rowsHtml += `<text x="${changesCol.x}" y="0" font-family="${font}" font-size="13" fill="#3fb950" ${textShadowStyle}>${changesText}</text>`;
+        }
+
+        const starsCol = columnMap.stars;
+        if (starsCol) {
+            const starTextX = starsCol.x + 20;
+            const starTextWidth = Math.max(10, starsCol.width - 20);
+            const starValue = truncateToWidth(starsText, starTextWidth, 7, 2);
+            rowsHtml += `<svg x="${starsCol.x}" y="-12" width="16" height="16" viewBox="0 0 16 16" fill="#${starColor}"><path fill-rule="evenodd" d="M8 .25a.75.75 0 01.673.418l1.882 3.815 4.21.612a.75.75 0 01.416 1.279l-3.046 2.97.719 4.192a.75.75 0 01-1.088.791L8 12.347l-3.766 1.98a.75.75 0 01-1.088-.79l.72-4.194L.818 6.374a.75.75 0 01.416-1.28l4.21-.611L7.327.668A.75.75 0 018 .25z"></path></svg>`;
+            rowsHtml += `<text x="${starTextX}" y="0" font-family="${font}" font-size="13" font-weight="bold" fill="#${starColor}" ${textShadowStyle}>${starValue}</text>`;
+        }
+
         rowsHtml += `</g>`;
     });
 
