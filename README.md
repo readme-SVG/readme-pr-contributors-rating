@@ -1,5 +1,7 @@
 # GitHub PR Contributors Rating
 
+[![Top PRs](https://readme-pr-contributors-rating.vercel.app/api/badge?username=schacon&show_pr=true&show_date=true&show_lang=true&show_changes=true&unique_repos=true&col_order=pr%2Cdate%2Clang%2Cchanges&bg_color=000000&text_color=ffffff&title_color=ffffff&muted_color=d1d5db&star_color=ffd166&border_color=000000&transparent=true)](https://github.com/readme-SVG/readme-pr-contributors-rating)
+
 Dynamic, configurable SVG badge library for logging and visualizing top GitHub pull request activity directly inside `README.md` files.
 
 [![Build](https://img.shields.io/badge/Build-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com)
