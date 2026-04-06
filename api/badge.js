@@ -3,10 +3,10 @@ export default async function handler(req, res) {
     const limit = clamp(parseInt(req.query.limit, 10) || 7, 1, 15);
     const showPr = req.query.show_pr !== 'false';
     const showDate = req.query.show_date !== 'false';
-    const showRepo = req.query.show_repo !== 'false';
+    const showRepo = true;
     const showLang = req.query.show_lang === 'true';
     const showChanges = req.query.show_changes === 'true';
-    const showStars = req.query.show_stars !== 'false';
+    const showStars = true;
 
     const badgeWidth = clamp(parseInt(req.query.badge_width, 10) || 830, 700, 1400);
     const rowHeight = clamp(parseInt(req.query.row_height, 10) || 40, 30, 60);
@@ -16,6 +16,14 @@ export default async function handler(req, res) {
     const dateWidth = clamp(parseInt(req.query.date_width, 10) || 90, 60, 300);
     const changesWidth = clamp(parseInt(req.query.changes_width, 10) || 100, 70, 300);
     const starsWidth = clamp(parseInt(req.query.stars_width, 10) || 60, 50, 240);
+
+    const validOrderKeys = ['pr', 'date', 'lang', 'changes'];
+    const defaultColOrder = ['pr', 'date', 'lang', 'changes'];
+    const parsedColOrder = String(req.query.col_order || '')
+        .split(',')
+        .map((key) => key.trim())
+        .filter((key, idx, arr) => validOrderKeys.includes(key) && arr.indexOf(key) === idx);
+    const colOrder = parsedColOrder.length ? parsedColOrder : defaultColOrder;
 
     const customTitle = req.query.custom_title ? sanitizeText(req.query.custom_title, 80) : '';
 
@@ -126,6 +134,7 @@ export default async function handler(req, res) {
             showLang,
             showChanges,
             showStars,
+            colOrder,
             badgeWidth,
             rowHeight,
             repoWidth,
@@ -218,7 +227,7 @@ function truncate(str, length) {
 }
 
 function truncateToWidth(str, widthPx, pxPerChar = 7.2, minLen = 4) {
-    const maxLen = Math.max(minLen, Math.floor(widthPx / pxPerChar));
+    const maxLen = Math.max(minLen, Math.floor(Math.max(0, widthPx) / pxPerChar));
     return truncate(str, maxLen);
 }
 
@@ -245,6 +254,57 @@ function getStatusIcon(pr) {
     };
 }
 
+function distributePreferredWidths(optionalColumns, remainingWidth, minWidth) {
+    if (!optionalColumns.length) return [];
+    if (remainingWidth <= 0) return optionalColumns.map(() => 0);
+
+    const sumPreferred = optionalColumns.reduce((sum, col) => sum + col.preferredWidth, 0);
+
+    if (sumPreferred <= remainingWidth) {
+        const widths = optionalColumns.map((col) => col.preferredWidth);
+        const leftover = remainingWidth - sumPreferred;
+        if (leftover > 0) {
+            let largestIdx = 0;
+            for (let i = 1; i < optionalColumns.length; i += 1) {
+                if (optionalColumns[i].preferredWidth > optionalColumns[largestIdx].preferredWidth) {
+                    largestIdx = i;
+                }
+            }
+            widths[largestIdx] += leftover;
+        }
+        return widths;
+    }
+
+    const floorMinTotal = minWidth * optionalColumns.length;
+    if (remainingWidth <= floorMinTotal) {
+        const even = Math.floor(remainingWidth / optionalColumns.length);
+        const widths = optionalColumns.map(() => even);
+        widths[widths.length - 1] += remainingWidth - even * optionalColumns.length;
+        return widths;
+    }
+
+    const widths = optionalColumns.map((col) => Math.max(minWidth, Math.floor((col.preferredWidth * remainingWidth) / sumPreferred)));
+    let used = widths.reduce((sum, value) => sum + value, 0);
+
+    while (used > remainingWidth) {
+        let changed = false;
+        for (let i = widths.length - 1; i >= 0 && used > remainingWidth; i -= 1) {
+            if (widths[i] > minWidth) {
+                widths[i] -= 1;
+                used -= 1;
+                changed = true;
+            }
+        }
+        if (!changed) break;
+    }
+
+    if (used < remainingWidth) {
+        widths[widths.length - 1] += (remainingWidth - used);
+    }
+
+    return widths;
+}
+
 function buildSvg(prs, username, opts) {
     const {
         showPr,
@@ -253,6 +313,7 @@ function buildSvg(prs, username, opts) {
         showLang,
         showChanges,
         showStars,
+        colOrder,
         badgeWidth,
         rowHeight,
         repoWidth,
@@ -275,41 +336,77 @@ function buildSvg(prs, username, opts) {
     const font = 'Segoe UI, Helvetica, Arial, sans-serif';
     const safeUser = escapeXml(username);
     const headerText = customTitle ? escapeXml(customTitle) : `Top Contributions by ${safeUser}`;
-    const innerLeft = 20;
-    const innerRight = badgeWidth - 20;
-    const colGap = 16;
+    const leftPad = 20;
+    const rightPad = 20;
+    const iconWidth = 24;
+    const iconGap = 8;
+    const colGap = 12;
     const textShadowStyle = transparent ? `filter="url(#textShadow)"` : '';
 
-    const columns = [];
-    if (showRepo) columns.push({ key: 'repo', label: 'REPOSITORY', width: repoWidth });
-    if (showLang) columns.push({ key: 'lang', label: 'LANGUAGE', width: langWidth });
-    if (showPr) columns.push({ key: 'pr', label: 'PULL REQUEST', width: prWidth });
-    if (showDate) columns.push({ key: 'date', label: 'DATE', width: dateWidth });
-    if (showChanges) columns.push({ key: 'changes', label: 'CHANGES', width: changesWidth });
-    if (showStars) columns.push({ key: 'stars', label: 'STARS', width: starsWidth });
+    const optionalColumnDefs = {
+        pr: { key: 'pr', label: 'PULL REQUEST', preferredWidth: prWidth, enabled: showPr },
+        date: { key: 'date', label: 'DATE', preferredWidth: dateWidth, enabled: showDate },
+        lang: { key: 'lang', label: 'LANGUAGE', preferredWidth: langWidth, enabled: showLang },
+        changes: { key: 'changes', label: 'CHANGES', preferredWidth: changesWidth, enabled: showChanges }
+    };
 
-    const iconX = innerLeft;
-    let currentX = iconX + 24;
-    const columnMap = {};
+    const enabledOptionalColumns = colOrder
+        .map((key) => optionalColumnDefs[key])
+        .filter((col) => col && col.enabled);
 
-    for (const col of columns) {
-        const remaining = innerRight - currentX;
-        if (remaining <= 12) break;
-        const allocated = Math.max(12, Math.min(col.width, remaining));
+    const xIcon = leftPad;
+    const xRepo = xIcon + iconWidth + iconGap;
+    const xStars = badgeWidth - rightPad - starsWidth;
+
+    let repoActualWidth = showRepo ? repoWidth : 0;
+    const optionalCount = enabledOptionalColumns.length;
+
+    if (optionalCount === 0) {
+        repoActualWidth = Math.max(0, badgeWidth - leftPad - iconWidth - iconGap - starsWidth - rightPad - colGap);
+    } else {
+        const totalGaps = (optionalCount + 1) * colGap;
+        const fixedWidth = leftPad + iconWidth + iconGap + repoActualWidth + starsWidth + rightPad + totalGaps;
+        let remainingWidth = badgeWidth - fixedWidth;
+
+        if (remainingWidth < 0) {
+            const repoMin = 60;
+            const shrink = Math.min(repoActualWidth - repoMin, Math.abs(remainingWidth));
+            repoActualWidth -= Math.max(0, shrink);
+            remainingWidth = badgeWidth - (leftPad + iconWidth + iconGap + repoActualWidth + starsWidth + rightPad + totalGaps);
+        }
+
+        const optionalWidths = distributePreferredWidths(enabledOptionalColumns, Math.max(0, remainingWidth), 50);
+        enabledOptionalColumns.forEach((col, idx) => {
+            col.actualWidth = optionalWidths[idx];
+        });
+    }
+
+    if (optionalCount === 0) {
+        const maxRepoFit = Math.max(0, xStars - xRepo - colGap);
+        repoActualWidth = Math.min(repoActualWidth, maxRepoFit);
+    }
+
+    const columnMap = {
+        repo: { key: 'repo', label: 'REPOSITORY', x: xRepo, actualWidth: repoActualWidth },
+        stars: { key: 'stars', label: 'STARS', x: xStars, actualWidth: starsWidth }
+    };
+
+    let xCurrent = xRepo + repoActualWidth + colGap;
+    for (const col of enabledOptionalColumns) {
         columnMap[col.key] = {
-            x: currentX,
-            width: allocated,
-            label: col.label
+            key: col.key,
+            label: col.label,
+            x: xCurrent,
+            actualWidth: col.actualWidth
         };
-        currentX += allocated + colGap;
+        xCurrent += col.actualWidth + colGap;
     }
 
-    let headerHtml = '';
-    for (const col of columns) {
-        const cfg = columnMap[col.key];
-        if (!cfg) continue;
-        headerHtml += `<text x="${cfg.x}" y="75" font-family="${font}" font-size="12" font-weight="bold" fill="#${mutedColor}" ${textShadowStyle}>${cfg.label}</text>`;
-    }
+    const headerColumns = [columnMap.repo, ...enabledOptionalColumns.map((col) => columnMap[col.key]), columnMap.stars];
+    const headerHtml = headerColumns
+        .filter((col) => col && col.actualWidth > 0)
+        .map((col) => `<text x="${col.x}" y="75" font-family="${font}" font-size="12" font-weight="bold" fill="#${mutedColor}" ${textShadowStyle}>${col.label}</text>`)
+        .join('');
 
     let rowsHtml = '';
     prs.forEach((pr, index) => {
@@ -321,49 +418,60 @@ function buildSvg(prs, username, opts) {
         const langText = pr.repoLanguage || 'Unknown';
 
         rowsHtml += `<g transform="translate(0, ${yOffset})">`;
-        rowsHtml += `<svg x="${iconX}" y="-12" width="16" height="16" viewBox="0 0 16 16" fill="${icon.color}"><path fill-rule="evenodd" d="${icon.path}"></path></svg>`;
+        rowsHtml += `<svg x="${xIcon}" y="-12" width="16" height="16" viewBox="0 0 16 16" fill="${icon.color}"><path fill-rule="evenodd" d="${icon.path}"></path></svg>`;
 
         const repoCol = columnMap.repo;
-        if (repoCol) {
-            const repoText = truncateToWidth(repoName, repoCol.width - 6, 7.2, 6);
+        if (repoCol && repoCol.actualWidth > 0) {
+            const repoText = truncateToWidth(repoName, repoCol.actualWidth - 6, 7.2, 6);
             rowsHtml += `<text x="${repoCol.x}" y="0" font-family="${font}" font-size="14" font-weight="600" fill="#${textColor}" ${textShadowStyle}>${repoText}</text>`;
         }
 
+        const prCol = columnMap.pr;
+        if (prCol && prCol.actualWidth > 0) {
+            const prTitle = truncateToWidth(pr.title, prCol.actualWidth - 6, 7.2, 8);
+            rowsHtml += `<text x="${prCol.x}" y="0" font-family="${font}" font-size="14" fill="#${mutedColor}" ${textShadowStyle}>${prTitle}</text>`;
+        }
+
+        const dateCol = columnMap.date;
+        if (dateCol && dateCol.actualWidth > 0) {
+            const dateText = truncateToWidth(date, dateCol.actualWidth - 6, 7, 8);
+            rowsHtml += `<text x="${dateCol.x}" y="0" font-family="${font}" font-size="13" fill="#${mutedColor}" ${textShadowStyle}>${dateText}</text>`;
+        }
+
         const langCol = columnMap.lang;
-        if (langCol) {
+        if (langCol && langCol.actualWidth > 0) {
             const langColor = LANG_COLORS[pr.repoLanguage] || '#8b949e';
             const langTextX = langCol.x + 14;
-            const langMaxTextWidth = Math.max(12, langCol.width - 16);
+            const langMaxTextWidth = Math.max(12, langCol.actualWidth - 16);
             const langDisplay = truncateToWidth(langText, langMaxTextWidth, 7, 4);
             rowsHtml += `<circle cx="${langCol.x + 5}" cy="-4" r="5" fill="${langColor}"/>`;
             rowsHtml += `<text x="${langTextX}" y="0" font-family="${font}" font-size="13" fill="#${textColor}" ${textShadowStyle}>${langDisplay}</text>`;
         }
 
-        const prCol = columnMap.pr;
-        if (prCol) {
-            const prTitle = truncateToWidth(pr.title, prCol.width - 6, 7.2, 8);
-            rowsHtml += `<text x="${prCol.x}" y="0" font-family="${font}" font-size="14" fill="#${mutedColor}" ${textShadowStyle}>${prTitle}</text>`;
-        }
-
-        const dateCol = columnMap.date;
-        if (dateCol) {
-            const dateText = truncateToWidth(date, dateCol.width - 6, 7, 8);
-            rowsHtml += `<text x="${dateCol.x}" y="0" font-family="${font}" font-size="13" fill="#${mutedColor}" ${textShadowStyle}>${dateText}</text>`;
-        }
-
         const changesCol = columnMap.changes;
-        if (changesCol) {
+        if (changesCol && changesCol.actualWidth > 0) {
             const additions = pr.additions || 0;
             const deletions = pr.deletions || 0;
-            const pairText = `+${additions} / -${deletions}`;
-            const changesText = truncateToWidth(pairText, changesCol.width - 6, 7, 7);
-            rowsHtml += `<text x="${changesCol.x}" y="0" font-family="${font}" font-size="13" fill="#3fb950" ${textShadowStyle}>${changesText}</text>`;
+            const fullAddText = `+${additions}`;
+            const fullSepText = ' / ';
+            const fullDelText = `-${deletions}`;
+            const compactSepText = '/';
+            const pxPerChar = 7.2;
+            const fullWidth = (fullAddText.length + fullSepText.length + fullDelText.length) * pxPerChar;
+            const useCompact = fullWidth > changesCol.actualWidth - 2;
+            const sepText = useCompact ? compactSepText : fullSepText;
+            const addWidth = fullAddText.length * pxPerChar;
+            const sepWidth = sepText.length * pxPerChar;
+            const delStartX = changesCol.x + addWidth + sepWidth;
+            rowsHtml += `<text x="${changesCol.x}" y="0" font-family="${font}" font-size="13" fill="#3fb950" ${textShadowStyle}>${escapeXml(fullAddText)}</text>`;
+            rowsHtml += `<text x="${changesCol.x + addWidth}" y="0" font-family="${font}" font-size="13" fill="#${mutedColor}" ${textShadowStyle}>${escapeXml(sepText)}</text>`;
+            rowsHtml += `<text x="${delStartX}" y="0" font-family="${font}" font-size="13" fill="#f85149" ${textShadowStyle}>${escapeXml(fullDelText)}</text>`;
         }
 
         const starsCol = columnMap.stars;
-        if (starsCol) {
+        if (showStars && starsCol && starsCol.actualWidth > 0) {
             const starTextX = starsCol.x + 20;
-            const starTextWidth = Math.max(10, starsCol.width - 20);
+            const starTextWidth = Math.max(10, starsCol.actualWidth - 20);
             const starValue = truncateToWidth(starsText, starTextWidth, 7, 2);
             rowsHtml += `<svg x="${starsCol.x}" y="-12" width="16" height="16" viewBox="0 0 16 16" fill="#${starColor}"><path fill-rule="evenodd" d="M8 .25a.75.75 0 01.673.418l1.882 3.815 4.21.612a.75.75 0 01.416 1.279l-3.046 2.97.719 4.192a.75.75 0 01-1.088.791L8 12.347l-3.766 1.98a.75.75 0 01-1.088-.79l.72-4.194L.818 6.374a.75.75 0 01.416-1.28l4.21-.611L7.327.668A.75.75 0 018 .25z"></path></svg>`;
             rowsHtml += `<text x="${starTextX}" y="0" font-family="${font}" font-size="13" font-weight="bold" fill="#${starColor}" ${textShadowStyle}>${starValue}</text>`;

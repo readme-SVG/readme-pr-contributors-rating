@@ -139,6 +139,50 @@
             accent-color: var(--gh-success);
         }
 
+
+        .column-order-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .column-order-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: 1px solid var(--gh-border);
+            border-radius: 6px;
+            padding: 8px 10px;
+            background: #f6f8fa;
+        }
+
+        .column-order-item .checkbox-row {
+            gap: 10px;
+            margin: 0;
+        }
+
+        .order-actions {
+            display: inline-flex;
+            gap: 6px;
+        }
+
+        .order-btn {
+            border: 1px solid var(--gh-border);
+            background: var(--gh-canvas);
+            color: var(--gh-text);
+            border-radius: 6px;
+            width: 28px;
+            height: 28px;
+            cursor: pointer;
+            font-size: 12px;
+            line-height: 1;
+        }
+
+        .order-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .color-group {
             display: flex;
             align-items: center;
@@ -306,40 +350,8 @@
             </div>
 
             <div class="form-group">
-                <div class="checkbox-row">
-                    <input type="checkbox" id="showPulls" checked>
-                    <label for="showPulls" data-i18n="showPullsLabel">Show pull requests</label>
-                </div>
-            </div>
-            <div class="form-group">
-                <div class="checkbox-row">
-                    <input type="checkbox" id="showDate" checked>
-                    <label for="showDate" data-i18n="showDateLabel">Show date</label>
-                </div>
-            </div>
-            <div class="form-group">
-                <div class="checkbox-row">
-                    <input type="checkbox" id="showRepo" checked>
-                    <label for="showRepo" data-i18n="showRepoLabel">Show repository</label>
-                </div>
-            </div>
-            <div class="form-group">
-                <div class="checkbox-row">
-                    <input type="checkbox" id="showLang">
-                    <label for="showLang" data-i18n="showLangLabel">Show language</label>
-                </div>
-            </div>
-            <div class="form-group">
-                <div class="checkbox-row">
-                    <input type="checkbox" id="showChanges">
-                    <label for="showChanges" data-i18n="showChangesLabel">Show changes</label>
-                </div>
-            </div>
-            <div class="form-group">
-                <div class="checkbox-row">
-                    <input type="checkbox" id="showStars" checked>
-                    <label for="showStars" data-i18n="showStarsLabel">Show stars</label>
-                </div>
+                <label class="form-label" data-i18n="columnOrderLabel">Column Order</label>
+                <div class="column-order-list" id="columnOrderList"></div>
             </div>
 
             <div class="form-group">
@@ -515,6 +527,91 @@ const themePresets = {
 };
 
 let currentLang = 'en';
+const columnLabels = {
+    pr: 'showPullsLabel',
+    date: 'showDateLabel',
+    lang: 'showLangLabel',
+    changes: 'showChangesLabel'
+};
+
+let columnOrderState = [
+    { key: 'pr', enabled: true },
+    { key: 'date', enabled: true },
+    { key: 'lang', enabled: false },
+    { key: 'changes', enabled: false }
+];
+
+function getLabelForColumn(key) {
+    const i18nKey = columnLabels[key];
+    return i18n[currentLang][i18nKey] || key;
+}
+
+function moveColumn(key, direction) {
+    const idx = columnOrderState.findIndex((item) => item.key === key);
+    if (idx < 0) return;
+    const targetIdx = idx + direction;
+    if (targetIdx < 0 || targetIdx >= columnOrderState.length) return;
+    const [item] = columnOrderState.splice(idx, 1);
+    columnOrderState.splice(targetIdx, 0, item);
+    renderColumnOrderList();
+}
+
+function setColumnEnabled(key, enabled) {
+    const item = columnOrderState.find((col) => col.key === key);
+    if (!item) return;
+    item.enabled = enabled;
+}
+
+function renderColumnOrderList() {
+    const list = document.getElementById('columnOrderList');
+    if (!list) return;
+    list.innerHTML = '';
+
+    columnOrderState.forEach((item, idx) => {
+        const row = document.createElement('div');
+        row.className = 'column-order-item';
+
+        const left = document.createElement('div');
+        left.className = 'checkbox-row';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `col-${item.key}`;
+        checkbox.checked = item.enabled;
+        checkbox.addEventListener('change', (e) => setColumnEnabled(item.key, e.target.checked));
+
+        const label = document.createElement('label');
+        label.setAttribute('for', checkbox.id);
+        label.textContent = getLabelForColumn(item.key);
+
+        left.appendChild(checkbox);
+        left.appendChild(label);
+
+        const actions = document.createElement('div');
+        actions.className = 'order-actions';
+
+        const upBtn = document.createElement('button');
+        upBtn.type = 'button';
+        upBtn.className = 'order-btn';
+        upBtn.textContent = '▲';
+        upBtn.disabled = idx === 0;
+        upBtn.addEventListener('click', () => moveColumn(item.key, -1));
+
+        const downBtn = document.createElement('button');
+        downBtn.type = 'button';
+        downBtn.className = 'order-btn';
+        downBtn.textContent = '▼';
+        downBtn.disabled = idx === columnOrderState.length - 1;
+        downBtn.addEventListener('click', () => moveColumn(item.key, 1));
+
+        actions.appendChild(upBtn);
+        actions.appendChild(downBtn);
+
+        row.appendChild(left);
+        row.appendChild(actions);
+        list.appendChild(row);
+    });
+}
 
 function switchLanguage(lang) {
     if (!i18n[lang]) return;
@@ -523,6 +620,7 @@ function switchLanguage(lang) {
         const key = el.getAttribute('data-i18n');
         if (i18n[lang][key]) el.textContent = i18n[lang][key];
     });
+    renderColumnOrderList();
 }
 
 function setupColorSync(pickerId, hexId) {
@@ -559,6 +657,7 @@ function applyThemePreset(name) {
 
 ['bg', 'text', 'title', 'muted', 'star', 'border', 'shadow'].forEach((name) => setupColorSync(`${name}ColorPicker`, `${name}Color`));
 applyThemePreset('dark');
+renderColumnOrderList();
 
 function updatePreviewWindowSize() {
     const height = Math.min(580, Math.max(120, parseInt(document.getElementById('previewHeight').value, 10) || 220));
@@ -571,9 +670,6 @@ updatePreviewWindowSize();
 function buildBadgeUrl() {
     const username = document.getElementById('username').value.trim() || 'OstinUA';
     const limit = document.getElementById('limit').value;
-    const showPulls = document.getElementById('showPulls').checked;
-    const showDate = document.getElementById('showDate').checked;
-    const showRepo = document.getElementById('showRepo').checked;
     const badgeWidth = document.getElementById('badgeWidth').value;
     const rowHeight = document.getElementById('rowHeight').value;
     const repoWidth = document.getElementById('repoWidth').value;
@@ -591,16 +687,17 @@ function buildBadgeUrl() {
     const shadowColor = document.getElementById('shadowColor').value;
 
     const customTitleVal = document.getElementById('customTitle').value.trim();
-    const showLang = document.getElementById('showLang').checked;
-    const showChanges = document.getElementById('showChanges').checked;
-    const showStars = document.getElementById('showStars').checked;
+    const byKey = Object.fromEntries(columnOrderState.map((item) => [item.key, item.enabled]));
+    const colOrder = columnOrderState.map((item) => item.key).join(',');
 
     const params = new URLSearchParams();
     params.set('username', username);
     if (limit !== '7') params.set('limit', limit);
-    if (!showPulls) params.set('show_pr', 'false');
-    if (!showDate) params.set('show_date', 'false');
-    if (!showRepo) params.set('show_repo', 'false');
+    params.set('show_pr', byKey.pr ? 'true' : 'false');
+    params.set('show_date', byKey.date ? 'true' : 'false');
+    params.set('show_lang', byKey.lang ? 'true' : 'false');
+    params.set('show_changes', byKey.changes ? 'true' : 'false');
+    params.set('col_order', colOrder);
     if (badgeWidth !== '830') params.set('badge_width', badgeWidth);
     if (rowHeight !== '40') params.set('row_height', rowHeight);
     if (repoWidth !== '180') params.set('repo_width', repoWidth);
@@ -610,9 +707,6 @@ function buildBadgeUrl() {
     if (changesWidth !== '100') params.set('changes_width', changesWidth);
     if (starsWidth !== '60') params.set('stars_width', starsWidth);
     if (customTitleVal) params.set('custom_title', customTitleVal);
-    if (showLang) params.set('show_lang', 'true');
-    if (showChanges) params.set('show_changes', 'true');
-    if (!showStars) params.set('show_stars', 'false');
     if (bgColor !== themePresets.dark.bg) params.set('bg_color', bgColor);
     if (textColor !== themePresets.dark.text) params.set('text_color', textColor);
     if (titleColor !== themePresets.dark.title) params.set('title_color', titleColor);
