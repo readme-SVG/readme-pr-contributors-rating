@@ -200,7 +200,7 @@ export default async function handler(req, res) {
         });
 
         res.setHeader('Content-Type', 'image/svg+xml');
-        res.setHeader('Cache-Control', 's-maxage=43200, stale-while-revalidate');
+        res.setHeader('Cache-Control', 's-maxage=172800, stale-while-revalidate');
         res.status(200).send(svg);
     } catch (error) {
         console.error(error);
