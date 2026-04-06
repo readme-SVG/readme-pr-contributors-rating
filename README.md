@@ -5,12 +5,18 @@
 
 Dynamic, configurable SVG badge library for logging and visualizing top GitHub pull request activity directly inside `README.md` files.
 
-[![Top PRs](https://readme-pr-contributors-rating.vercel.app/api/badge?username=schacon&show_pr=true&show_date=true&show_lang=true&show_changes=true&unique_repos=true&col_order=pr%2Cdate%2Clang%2Cchanges&bg_color=000000&text_color=ffffff&title_color=ffffff&muted_color=d1d5db&star_color=ffd166&border_color=000000&transparent=true)](https://github.com/readme-SVG/readme-pr-contributors-rating)
-
 [![Build](https://img.shields.io/badge/Build-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com)
 [![Version](https://img.shields.io/badge/Version-1.0.0-blue?style=for-the-badge)](./package.json)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](./LICENSE)
 [![API](https://img.shields.io/badge/API-GitHub%20GraphQL-181717?style=for-the-badge&logo=github)](https://docs.github.com/en/graphql)
+
+---
+
+[![Top PRs](https://readme-pr-contributors-rating.vercel.app/api/badge?username=john-preston&show_pr=true&show_date=true&show_lang=false&show_changes=true&unique_repos=true&show_rejected=true&col_order=changes%2Cpr%2Cdate%2Clang&bg_color=22272e&text_color=539bf5&title_color=539bf5&muted_color=768390&star_color=d29922&border_color=1f6feb)](https://github.com/readme-SVG/readme-pr-contributors-rating)
+
+[![Top PRs](https://readme-pr-contributors-rating.vercel.app/api/badge?username=schacon&show_pr=true&show_date=true&show_lang=true&show_changes=true&unique_repos=true&col_order=pr%2Cdate%2Clang%2Cchanges&bg_color=1c0d0d&text_color=d8e5ff&title_color=ff4d4d&muted_color=89a4d6&star_color=1f6feb&border_color=1d3557)](https://github.com/readme-SVG/readme-pr-contributors-rating)
+
+---
 
 ## Table of Contents
 
