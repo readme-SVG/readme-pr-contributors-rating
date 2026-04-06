@@ -7,6 +7,8 @@ export default async function handler(req, res) {
     const showLang = req.query.show_lang === 'true';
     const showChanges = req.query.show_changes === 'true';
     const showStars = true;
+    const uniqueRepos = req.query.unique_repos === 'true';
+    const repoNameFormat = req.query.repo_name_format === 'short' ? 'short' : 'full';
 
     const badgeWidth = clamp(parseInt(req.query.badge_width, 10) || 830, 700, 1400);
     const rowHeight = clamp(parseInt(req.query.row_height, 10) || 40, 30, 60);
@@ -93,6 +95,17 @@ export default async function handler(req, res) {
             repoLanguage: (repoStats[pr.repository_url] || {}).language || null
         }));
 
+        if (uniqueRepos) {
+            const latestPerRepo = new Map();
+            for (const pr of enrichedPrs) {
+                const existing = latestPerRepo.get(pr.repository_url);
+                if (!existing || new Date(pr.created_at) > new Date(existing.created_at)) {
+                    latestPerRepo.set(pr.repository_url, pr);
+                }
+            }
+            enrichedPrs = [...latestPerRepo.values()];
+        }
+
         enrichedPrs.sort((a, b) => b.repoStars - a.repoStars);
 
         const sortedPrs = enrichedPrs.slice(0, limit);
@@ -134,6 +147,7 @@ export default async function handler(req, res) {
             showLang,
             showChanges,
             showStars,
+            repoNameFormat,
             colOrder,
             badgeWidth,
             rowHeight,
@@ -313,6 +327,7 @@ function buildSvg(prs, username, opts) {
         showLang,
         showChanges,
         showStars,
+        repoNameFormat,
         colOrder,
         badgeWidth,
         rowHeight,
@@ -412,7 +427,8 @@ function buildSvg(prs, username, opts) {
     prs.forEach((pr, index) => {
         const yOffset = 110 + index * rowHeight;
         const icon = getStatusIcon(pr);
-        const repoName = pr.repository_url.split('/').slice(-2).join('/');
+        const repoParts = pr.repository_url.split('/').slice(-2);
+        const repoName = repoNameFormat === 'short' ? (repoParts[1] || repoParts[0] || '') : repoParts.join('/');
         const date = new Date(pr.created_at).toISOString().split('T')[0];
         const starsText = formatStars(pr.repoStars);
         const langText = pr.repoLanguage || 'Unknown';
@@ -452,20 +468,13 @@ function buildSvg(prs, username, opts) {
         if (changesCol && changesCol.actualWidth > 0) {
             const additions = pr.additions || 0;
             const deletions = pr.deletions || 0;
-            const fullAddText = `+${additions}`;
-            const fullSepText = ' / ';
-            const fullDelText = `-${deletions}`;
-            const compactSepText = '/';
+            const addText = `+${additions}`;
+            const delText = `-${deletions}`;
+            const fullText = `${addText} / ${delText}`;
             const pxPerChar = 7.2;
-            const fullWidth = (fullAddText.length + fullSepText.length + fullDelText.length) * pxPerChar;
-            const useCompact = fullWidth > changesCol.actualWidth - 2;
-            const sepText = useCompact ? compactSepText : fullSepText;
-            const addWidth = fullAddText.length * pxPerChar;
-            const sepWidth = sepText.length * pxPerChar;
-            const delStartX = changesCol.x + addWidth + sepWidth;
-            rowsHtml += `<text x="${changesCol.x}" y="0" font-family="${font}" font-size="13" fill="#3fb950" ${textShadowStyle}>${escapeXml(fullAddText)}</text>`;
-            rowsHtml += `<text x="${changesCol.x + addWidth}" y="0" font-family="${font}" font-size="13" fill="#${mutedColor}" ${textShadowStyle}>${escapeXml(sepText)}</text>`;
-            rowsHtml += `<text x="${delStartX}" y="0" font-family="${font}" font-size="13" fill="#f85149" ${textShadowStyle}>${escapeXml(fullDelText)}</text>`;
+            const useCompact = (fullText.length * pxPerChar) > Math.max(0, changesCol.actualWidth - 2);
+            const sepText = useCompact ? '/' : ' / ';
+            rowsHtml += `<text x="${changesCol.x}" y="0" font-family="${font}" font-size="13" ${textShadowStyle}><tspan fill="#3fb950">${escapeXml(addText)}</tspan><tspan fill="#${mutedColor}">${escapeXml(sepText)}</tspan><tspan fill="#f85149">${escapeXml(delText)}</tspan></text>`;
         }
 
         const starsCol = columnMap.stars;
